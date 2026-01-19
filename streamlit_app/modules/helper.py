@@ -708,10 +708,17 @@ def ensemble_predict(models, X_test, weights=None):
     confidence = np.clip(1 - (avg_std / max_expected_std), 0, 1)
     
     # Boost confidence if all models agree on direction
-    if len(predictions) >= 2:
-        pred_signs = np.array([np.sign(p - X_test[:, 0]) for p in predictions.values()])
-        agreement = np.mean(np.abs(np.mean(pred_signs, axis=0)))
-        confidence = confidence * 0.7 + agreement * 0.3  # Blend agreement into confidence
+    if len(predictions) >= 2 and len(ensemble_pred) > 0:
+        try:
+            # Calculate direction agreement (all models predict up or down)
+            pred_directions = []
+            for pred in predictions.values():
+                pred_directions.append(np.sign(pred))
+            pred_signs = np.array(pred_directions)
+            agreement = np.mean(np.abs(np.mean(pred_signs, axis=0)))
+            confidence = confidence * 0.7 + agreement * 0.3  # Blend agreement into confidence
+        except Exception:
+            pass  # If direction calculation fails, just use base confidence
     
     return ensemble_pred, predictions, confidence
 
@@ -1057,10 +1064,10 @@ def generate_stock_prediction(stock_ticker, forecast_days=30):
 
 def get_smart_investment_recommendation(top_stocks=None, progress_callback=None):
     """
-    Analyze multiple top stocks and recommend the best investment opportunity.
+    Analyze multiple stocks and recommend the best investment opportunity.
     
     Args:
-        top_stocks (list): List of stock tickers to analyze. If None, uses default top stocks.
+        top_stocks (list): List of stock tickers to analyze. If None, analyzes ALL S&P 500 stocks.
         progress_callback (function): Optional callback to report progress
     
     Returns:
@@ -1076,11 +1083,22 @@ def get_smart_investment_recommendation(top_stocks=None, progress_callback=None)
         }
     """
     if top_stocks is None:
-        # Default to analyzing top 10 popular stocks
-        top_stocks = [
-            'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 
-            'META', 'TSLA', 'JPM', 'V', 'JNJ'
-        ]
+        # Analyze ALL S&P 500 stocks for comprehensive recommendation
+        try:
+            sp_tickers = fetch_sp_tickers()
+            # Filter out tickers with special characters that may cause API issues
+            top_stocks = [
+                symbol for symbol in sp_tickers.keys() 
+                if '.' not in symbol and '-' not in symbol
+            ]
+            print(f"Analyzing {len(top_stocks)} stocks for best investment opportunity...")
+        except Exception as e:
+            print(f"Error fetching S&P 500 list: {e}")
+            # Fallback to top 10 popular stocks if S&P 500 list unavailable
+            top_stocks = [
+                'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 
+                'META', 'TSLA', 'JPM', 'V', 'JNJ'
+            ]
     
     all_results = []
     

@@ -642,7 +642,7 @@ with right_col:
         st.markdown("""
         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 20px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);'>
             <h2 style='color: white; text-align: center; margin-bottom: 15px; font-size: 32px;'>🎯 AI Investment Recommendation</h2>
-            <p style='color: rgba(255,255,255,0.9); text-align: center; font-size: 16px;'>Analyzing top stocks to find the best opportunity...</p>
+            <p style='color: rgba(255,255,255,0.9); text-align: center; font-size: 16px;'>Analyzing 450+ S&P 500 stocks to find the best opportunity... This may take a few minutes.</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -653,12 +653,12 @@ with right_col:
         def update_progress(current, total, ticker):
             progress = current / total
             progress_bar.progress(progress)
-            status_text.text(f"Analyzing {ticker}... ({current}/{total})")
+            status_text.text(f"Analyzing {ticker}... ({current}/{total} stocks)")
         
         try:
-            # Get recommendation
+            # Get recommendation - analyze ALL S&P 500 stocks
             recommendation = get_smart_investment_recommendation(
-                top_stocks=['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'JPM', 'V', 'JNJ'],
+                top_stocks=None,  # This will analyze all 450+ S&P 500 stocks
                 progress_callback=update_progress
             )
             
@@ -941,7 +941,8 @@ with right_col:
                     
                     exit_signal = analysis.get('exit_signal', 'HOLD')
                     exit_date = analysis.get('exit_date', None)
-                    exit_reason = analysis.get('exit_reason', 'No exit signal detected')
+                    # Ensure exit_reason is properly escaped for HTML display
+                    exit_reason = str(analysis.get('exit_reason', 'No exit signal detected')).replace('<', '&lt;').replace('>', '&gt;')
                     exit_confidence = analysis.get('exit_confidence', 0.0)
                     
                     # Determine signal color and emoji

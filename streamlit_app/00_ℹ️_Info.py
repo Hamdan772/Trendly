@@ -787,13 +787,17 @@ with right_col:
                     
                     # Decision badge
                     decision = analysis['decision']
+                    recommendation = analysis.get('recommendation', 'HOLD')  # Get the actual recommendation code
                     
-                    # Parse decision to determine badge style
-                    if "Yes" in decision or "Invest" in decision and "Not" not in decision:
-                        badge_class, badge_icon, badge_text = "badge-invest", "🟢", "YES — INVEST"
-                    elif "Hold" in decision or "Wait" in decision:
-                        badge_class, badge_icon, badge_text = "badge-hold", "🟡", "HOLD / WAIT"
-                    else:
+                    # Parse recommendation to determine badge style
+                    if recommendation in ['STRONG BUY', 'BUY', 'CONSIDER BUY']:
+                        if recommendation == 'STRONG BUY':
+                            badge_class, badge_icon, badge_text = "badge-invest", "🚀", "STRONG BUY"
+                        else:
+                            badge_class, badge_icon, badge_text = "badge-invest", "🟢", "YES — INVEST"
+                    elif recommendation in ['HOLD', 'CAUTIOUS']:
+                        badge_class, badge_icon, badge_text = "badge-hold", "🟡", "HOLD / WATCH"
+                    else:  # SELL, AVOID
                         badge_class, badge_icon, badge_text = "badge-avoid", "🔴", "DO NOT INVEST"
                     
                     st.markdown(f"""

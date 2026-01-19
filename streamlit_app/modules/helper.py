@@ -779,22 +779,22 @@ def generate_investment_analysis(stock_ticker, forecast_days=30):
             # Train ensemble models
             ensemble_models = train_ensemble_models(X_train_scaled, y_train)
             
-            # Make predictions
-            ensemble_pred, individual_preds, model_confidence = ensemble_predict(ensemble_models, X_test_scaled)
+            # Make predictions on test set (for accuracy metrics)
+            ensemble_pred, test_preds, model_confidence = ensemble_predict(ensemble_models, X_test_scaled)
             
             # For next-day prediction, use the last data point
             last_features = X[-1:].reshape(1, -1)
             last_features_scaled = scaler.transform(last_features)
-            next_day_pred_ml, individual_preds, conf = ensemble_predict(ensemble_models, last_features_scaled)
+            next_day_pred_ml, _, conf = ensemble_predict(ensemble_models, last_features_scaled)
             predicted_price_ml = next_day_pred_ml[0]
             
-            # Calculate model accuracy metrics for all available models
-            mae_rf = mean_absolute_error(y_test, individual_preds['RandomForest'])
-            mae_gb = mean_absolute_error(y_test, individual_preds['GradientBoosting'])
-            mae_xgb = mean_absolute_error(y_test, individual_preds['XGBoost']) if 'XGBoost' in individual_preds else 0
-            r2_rf = r2_score(y_test, individual_preds['RandomForest'])
-            r2_gb = r2_score(y_test, individual_preds['GradientBoosting'])
-            r2_xgb = r2_score(y_test, individual_preds['XGBoost']) if 'XGBoost' in individual_preds else 0
+            # Calculate model accuracy metrics using TEST set predictions (not next-day predictions!)
+            mae_rf = mean_absolute_error(y_test, test_preds['RandomForest'])
+            mae_gb = mean_absolute_error(y_test, test_preds['GradientBoosting'])
+            mae_xgb = mean_absolute_error(y_test, test_preds['XGBoost']) if 'XGBoost' in test_preds else 0
+            r2_rf = r2_score(y_test, test_preds['RandomForest'])
+            r2_gb = r2_score(y_test, test_preds['GradientBoosting'])
+            r2_xgb = r2_score(y_test, test_preds['XGBoost']) if 'XGBoost' in test_preds else 0
             
             ml_success = True
             

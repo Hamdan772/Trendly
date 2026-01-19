@@ -963,6 +963,11 @@ with right_col:
                         signal_emoji = '🟢'
                         signal_label = 'SAFE TO HOLD'
                     
+                    # Build the date display part separately to avoid f-string issues
+                    date_html = ''
+                    if exit_date:
+                        date_html = f'<div style="font-size: 16px; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">📅 {exit_date.strftime("%b %d, %Y")}</div>'
+                    
                     st.markdown(f"""
                     <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); 
                                 border-radius: 15px; padding: 20px; margin: 15px 0;
@@ -975,7 +980,7 @@ with right_col:
                                     <div style="font-size: 14px; color: rgba(255,255,255,0.6);">Confidence: {exit_confidence:.0f}%</div>
                                 </div>
                             </div>
-                            {f'<div style="font-size: 16px; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">📅 {exit_date.strftime("%b %d, %Y")}</div>' if exit_date else ''}
+                            {date_html}
                         </div>
                         <div style="font-size: 16px; color: rgba(255,255,255,0.9); line-height: 1.6;">
                             {exit_reason}

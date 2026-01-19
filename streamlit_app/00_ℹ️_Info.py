@@ -945,8 +945,7 @@ with right_col:
                     
                     exit_signal = analysis.get('exit_signal', 'HOLD')
                     exit_date = analysis.get('exit_date', None)
-                    # Ensure exit_reason is properly escaped for HTML display
-                    exit_reason = str(analysis.get('exit_reason', 'No exit signal detected')).replace('<', '&lt;').replace('>', '&gt;')
+                    exit_reason = analysis.get('exit_reason', 'No exit signal detected')
                     exit_confidence = analysis.get('exit_confidence', 0.0)
                     
                     # Determine signal color and emoji
@@ -963,12 +962,11 @@ with right_col:
                         signal_emoji = '🟢'
                         signal_label = 'SAFE TO HOLD'
                     
-                    # Build the date display part separately to avoid f-string issues
-                    date_html = ''
-                    if exit_date:
-                        date_html = f'<div style="font-size: 16px; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">📅 {exit_date.strftime("%b %d, %Y")}</div>'
+                    # Build date display
+                    date_display = f"📅 {exit_date.strftime('%b %d, %Y')}" if exit_date else ""
                     
-                    st.markdown(f"""
+                    # Create clean HTML without nested issues
+                    exit_html = f"""
                     <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); 
                                 border-radius: 15px; padding: 20px; margin: 15px 0;
                                 border: 2px solid {signal_color}40;">
@@ -979,14 +977,19 @@ with right_col:
                                     <div style="font-size: 24px; font-weight: bold; color: {signal_color};">{signal_label}</div>
                                     <div style="font-size: 14px; color: rgba(255,255,255,0.6);">Confidence: {exit_confidence:.0f}%</div>
                                 </div>
-                            </div>
-                            {date_html}
+                            </div>"""
+                    
+                    if date_display:
+                        exit_html += f"""
+                            <div style="font-size: 16px; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">{date_display}</div>"""
+                    
+                    exit_html += f"""
                         </div>
-                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); line-height: 1.6;">
-                            {exit_reason}
-                        </div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); line-height: 1.6;">{exit_reason}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """
+                    
+                    st.markdown(exit_html, unsafe_allow_html=True)
                     
                     # Chart with enhanced styling
                     st.markdown('<div class="section-title">📈 Price & Prediction Chart</div>', unsafe_allow_html=True)

@@ -359,15 +359,17 @@ def calculate_investment_score(predicted_return, current_price, ma_5, ma_10, ma_
                                 volatility, volume_ratio, rsi=None, macd_diff=None, bb_position=None,
                                 ma_50=None, ma_200=None, model_confidence=None):
     """
-    Calculate comprehensive investment score (0-100) based on multiple advanced factors.
+    Calculate comprehensive investment score (0-100+) based on multiple advanced factors.
     
-    Scoring Breakdown:
-    - Expected Return (0-35 points): Rewards profit potential
-    - Trend Strength (0-25 points): Evaluates price position vs moving averages
+    Scoring Breakdown (More Generous):
+    - Expected Return (0-40 points): Rewards profit potential (up to 40 for 5%+ returns)
+    - Trend Strength (0-30 points): Evaluates price position vs moving averages
     - Risk Level (0-15 points): Considers volatility
-    - Volume Confirmation (0-10 points): Checks market participation
-    - Technical Indicators (0-10 points): RSI, MACD, Bollinger Bands
-    - Model Confidence (0-5 points): Prediction reliability
+    - Volume Confirmation (0-10 points): Checks market participation  
+    - Technical Indicators (0-15 points): RSI, MACD, Bollinger Bands
+    - Model Confidence (0-10 points): Prediction reliability
+    
+    Maximum Possible: 120 points (allows scores above 100 for exceptional stocks)
     
     Args:
         predicted_return (float): Expected return percentage
@@ -385,17 +387,19 @@ def calculate_investment_score(predicted_return, current_price, ma_5, ma_10, ma_
         tuple: (total_score, breakdown_dict)
     """
     
-    # 1️⃣ EXPECTED RETURN SCORE (0-35 points) - More realistic
-    if predicted_return >= 3.0:
-        return_score = 35  # 3%+ return = excellent
+    # 1️⃣ EXPECTED RETURN SCORE (0-40 points) - More generous and rewarding
+    if predicted_return >= 5.0:
+        return_score = 40  # 5%+ return = exceptional
+    elif predicted_return >= 3.0:
+        return_score = 38  # 3-5% return = excellent  
     elif predicted_return >= 2.0:
-        return_score = 30  # 2-3% return = very good
+        return_score = 35  # 2-3% return = very good
     elif predicted_return >= 1.0:
-        return_score = 25  # 1-2% return = good
+        return_score = 30  # 1-2% return = good
     elif predicted_return >= 0.5:
-        return_score = 18  # 0.5-1% return = decent
+        return_score = 22  # 0.5-1% return = decent
     elif predicted_return > 0:
-        return_score = 10  # Small positive = okay
+        return_score = 12  # Small positive = okay
     elif predicted_return > -0.5:
         return_score = 5   # Slight negative = risky
     elif predicted_return > -1.0:
@@ -403,21 +407,25 @@ def calculate_investment_score(predicted_return, current_price, ma_5, ma_10, ma_
     else:
         return_score = 0   # Large negative = avoid
     
-    # 2️⃣ TREND STRENGTH SCORE (0-25 points)
+    # 2️⃣ TREND STRENGTH SCORE (0-30 points) - More generous
     trend_score = 0
     if current_price > ma_5:
-        trend_score += 5   # Above short-term MA
+        trend_score += 6   # Above short-term MA
     if current_price > ma_10:
-        trend_score += 5   # Above medium-term MA
+        trend_score += 6   # Above medium-term MA
     if current_price > ma_20:
-        trend_score += 5   # Above longer-term MA
+        trend_score += 6   # Above longer-term MA
     
     # Golden Cross / Death Cross (powerful signal)
     if ma_50 is not None and ma_200 is not None:
         if ma_50 > ma_200 and current_price > ma_50:
-            trend_score += 10  # Golden cross + price above = strong uptrend
-        elif ma_50 < ma_200:
-            trend_score -= 5   # Death cross = penalty
+            trend_score += 12  # Golden cross + price above = strong uptrend
+        elif ma_50 > ma_200:
+            trend_score += 6   # Golden cross but price below = building momentum
+        elif ma_50 < ma_200 and current_price > ma_50:
+            trend_score += 3   # Death cross but price recovering
+        else:
+            trend_score -= 3   # Death cross = penalty
     
     trend_score = max(0, trend_score)  # Don't go negative
     
@@ -447,39 +455,49 @@ def calculate_investment_score(predicted_return, current_price, ma_5, ma_10, ma_
     else:
         volume_score = 0   # Low volume = no conviction
     
-    # 5️⃣ TECHNICAL INDICATORS SCORE (0-10 points)
+    # 5️⃣ TECHNICAL INDICATORS SCORE (0-15 points) - More weight
     technical_score = 0
     
-    # RSI Analysis (0-4 points)
+    # RSI Analysis (0-6 points) - More generous
     if rsi is not None:
         if 40 <= rsi <= 60:
-            technical_score += 4  # Neutral zone = healthy
-        elif 30 <= rsi < 40 or 60 < rsi <= 70:
-            technical_score += 3  # Slightly oversold/overbought
-        elif 20 <= rsi < 30 or 70 < rsi <= 80:
-            technical_score += 1  # Oversold/overbought warning
+            technical_score += 6  # Neutral zone = healthy
+        elif 30 <= rsi < 40:
+            technical_score += 5  # Oversold = buying opportunity
+        elif 60 < rsi <= 70:
+            technical_score += 4  # Slight overbought but still good
+        elif 20 <= rsi < 30:
+            technical_score += 3  # Very oversold = potential bounce
+        elif 70 < rsi <= 80:
+            technical_score += 2  # Overbought warning
         # RSI < 20 or > 80 = 0 points (extreme)
     
-    # MACD Analysis (0-3 points)
+    # MACD Analysis (0-5 points) - More generous
     if macd_diff is not None:
-        if macd_diff > 0:
-            technical_score += 3  # Bullish momentum
+        if macd_diff > 0.5:
+            technical_score += 5  # Strong bullish momentum
+        elif macd_diff > 0:
+            technical_score += 4  # Bullish momentum
         elif macd_diff > -0.5:
-            technical_score += 1  # Weak bearish
+            technical_score += 2  # Weak bearish
+        elif macd_diff > -1.0:
+            technical_score += 1  # Moderate bearish
     
-    # Bollinger Bands Position (0-3 points)
+    # Bollinger Bands Position (0-4 points)
     if bb_position is not None:
         if 0.3 <= bb_position <= 0.7:
-            technical_score += 3  # Middle of bands = healthy
-        elif 0.1 <= bb_position < 0.3 or 0.7 < bb_position <= 0.9:
-            technical_score += 2  # Near edges
+            technical_score += 4  # Middle of bands = healthy
+        elif 0.1 <= bb_position < 0.3:
+            technical_score += 3  # Lower band = oversold opportunity
+        elif 0.7 < bb_position <= 0.9:
+            technical_score += 2  # Near upper band
         elif bb_position < 0.1:
-            technical_score += 1  # Oversold area (potential bounce)
+            technical_score += 2  # Very oversold (potential bounce)
     
-    # 6️⃣ MODEL CONFIDENCE SCORE (0-5 points)
+    # 6️⃣ MODEL CONFIDENCE SCORE (0-10 points) - Double weight
     confidence_score = 0
     if model_confidence is not None:
-        confidence_score = model_confidence * 5  # Scale 0-1 to 0-5
+        confidence_score = model_confidence * 10  # Scale 0-1 to 0-10
     
     # CALCULATE TOTAL SCORE
     total_score = return_score + trend_score + risk_score + volume_score + technical_score + confidence_score

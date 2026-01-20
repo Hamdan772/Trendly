@@ -21,8 +21,8 @@ Ticker = None
 try:
     from defeatbeta_api.data.ticker import Ticker
     DEFEAT_API_AVAILABLE = True
-except Exception as e:
-    print(f"defeatbeta-api not available, will use yfinance")
+except Exception:
+    print("defeatbeta-api not available, using yfinance fallback")
 
 import ta  # Technical Analysis library
 import os
@@ -51,9 +51,7 @@ def fetch_sp_tickers():
 
 def fetch_stock_history(stock_ticker, period="max", interval="1d"):
     """
-    Fetch historical stock data from Defeat Beta API with Volume included.
-    Falls back to yfinance if defeatbeta_api is not available.
-    
+    Fetch historical stock data from Defeat Beta API or yfinance fallback with Volume included.
     Args:
         stock_ticker (str): The stock ticker symbol.
         period (str): The time period for the data ('max', '2y', etc.).
@@ -61,10 +59,13 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
     Returns:
         pd.DataFrame: A DataFrame containing stock data with columns ['Open', 'High', 'Low', 'Close', 'Volume'].
     """
-    try:
-        if DEFEAT_API_AVAILABLE:
-            # Use Defeat Beta API
+    # Try defeatbeta-api first if available
+    if DEFEAT_API_AVAILABLE:
+        try:
+            # Initialize Defeat Beta Ticker
             ticker = Ticker(stock_ticker)
+            
+            # Fetch price data (automatically gets full historical data)
             data = ticker.price()
             
             if data.empty:
@@ -84,34 +85,37 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
             if 'Date' in data.columns:
                 data['Date'] = pd.to_datetime(data['Date'])
                 data = data.set_index('Date')
-        else:
-            # Fallback to yfinance
-            try:
-                import yfinance as yf
-            except ImportError:
-                print("Installing yfinance...")
-                import subprocess
-                subprocess.check_call(['pip', 'install', 'yfinance', '--break-system-packages', '-q'])
-                import yfinance as yf
             
-            ticker_obj = yf.Ticker(stock_ticker)
-            data = ticker_obj.history(period=period, interval=interval)
+            # Sort by date (ascending)
+            data = data.sort_index()
             
-            if data.empty:
-                raise ValueError(f"No data found for ticker {stock_ticker}.")
+            # Filter based on period
+            if period == "2y":
+                two_years_ago = datetime.now() - timedelta(days=730)
+                data = data[data.index >= two_years_ago]
             
-            # Ensure columns are named correctly
-            data.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']
-            data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
+            return data[['Open', 'High', 'Low', 'Close', 'Volume']]
         
-        # Sort by date (ascending)
-        data = data.sort_index()
+        except Exception as e:
+            print(f"defeatbeta-api failed, falling back to yfinance: {e}")
+    
+    # Fallback to yfinance
+    try:
+        import yfinance as yf
+    except ImportError:
+        # Try to install yfinance if not available
+        import subprocess
+        subprocess.check_call(['pip', 'install', 'yfinance', '--break-system-packages'])
+        import yfinance as yf
+    
+    try:
+        ticker = yf.Ticker(stock_ticker)
+        data = ticker.history(period=period, interval=interval)
         
-        # Filter based on period
-        if period == "2y":
-            two_years_ago = datetime.now() - timedelta(days=730)
-            data = data[data.index >= two_years_ago]
+        if data.empty:
+            raise ValueError(f"No data found for ticker {stock_ticker}.")
         
+        # yfinance already provides columns in correct format
         return data[['Open', 'High', 'Low', 'Close', 'Volume']]
     
     except ValueError as ve:

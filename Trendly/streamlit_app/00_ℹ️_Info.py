@@ -1025,152 +1025,153 @@ with right_col:
                             hovertemplate='<b>Date:</b> %{x}<br><b>Predicted:</b> $%{y:.2f}<extra></extra>'
                         ))
                     
-                    fig.update_layout(
-                        template='plotly_white',
-                        hovermode='x unified',
-                        height=450,
-                        margin=dict(l=10, r=10, t=40, b=10),
-                        legend=dict(
-                            orientation="h",
-                            yanchor="top",
-                            y=1.1,
-                            xanchor="left",
-                            x=0,
-                            font=dict(size=13, color='#374151'),
-                            bgcolor='rgba(255,255,255,0.8)',
-                            bordercolor='#e5e7eb',
-                            borderwidth=1
+                
+                fig.update_layout(
+                    template='plotly_white',
+                    hovermode='x unified',
+                    height=450,
+                    margin=dict(l=10, r=10, t=40, b=10),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="top",
+                        y=1.1,
+                        xanchor="left",
+                        x=0,
+                        font=dict(size=13, color='#374151'),
+                        bgcolor='rgba(255,255,255,0.8)',
+                        bordercolor='#e5e7eb',
+                        borderwidth=1
+                    ),
+                    xaxis=dict(
+                        title=dict(
+                            text="Date",
+                            font=dict(size=14, color='#374151', family='Arial Black')
                         ),
-                        xaxis=dict(
-                            title="Date",
-                            titlefont=dict(size=14, color='#374151', family='Arial Black'),
-                            showgrid=True,
-                            gridcolor='#f3f4f6'
+                        showgrid=True,
+                        gridcolor='#f3f4f6'
+                    ),
+                    yaxis=dict(
+                        title=dict(
+                            text="Price (USD)",
+                            font=dict(size=14, color='#374151', family='Arial Black')
                         ),
-                        yaxis=dict(
-                            title="Price (USD)",
-                            titlefont=dict(size=14, color='#374151', family='Arial Black'),
-                            showgrid=True,
-                            gridcolor='#f3f4f6'
-                        ),
-                        plot_bgcolor='white',
-                        paper_bgcolor='white'
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Model Insight
-                    st.markdown('<div class="insight-box">', unsafe_allow_html=True)
-                    st.markdown('<div class="insight-title">🧠 Advanced ML Model Insight</div>', unsafe_allow_html=True)
-                    
-                    # Model performance indicator
-                    ml_success = analysis.get('ml_success', False)
-                    model_confidence = analysis.get('model_confidence', 0.5)
-                    
-                    if ml_success:
-                        model_info = f"Using ensemble ML (RandomForest + GradientBoosting + AutoReg) with {model_confidence*100:.0f}% confidence. "
-                    else:
-                        model_info = "Using AutoReg time-series model. "
-                    
-                    insight_text = model_info + f"The stock is trading with a {trend_value.lower()} trend"
-                    
-                    if momentum_value == "Positive":
-                        insight_text += ", showing positive momentum indicators"
-                    elif momentum_value == "Negative":
-                        insight_text += ", with weakening momentum"
-                    else:
-                        insight_text += ", with neutral momentum"
-                    
-                    # RSI insight
-                    if rsi_14:
-                        if rsi_14 < 30:
-                            insight_text += f". RSI is oversold at {rsi_14:.0f}, suggesting potential bounce opportunity"
-                        elif rsi_14 > 70:
-                            insight_text += f". RSI is overbought at {rsi_14:.0f}, indicating potential overextension"
-                        else:
-                            insight_text += f". RSI is in healthy range at {rsi_14:.0f}"
-                    
-                    # MACD insight
-                    if macd_diff:
-                        if macd_diff > 0:
-                            insight_text += " with bullish MACD momentum"
-                        else:
-                            insight_text += " while MACD shows bearish momentum"
-                    
-                    insight_text += f". Volatility is {volatility_value.lower()}"
-                    
-                    if volume_value in ["Strong", "Above Avg"]:
-                        insight_text += ", while volume confirms strong investor interest"
-                    elif volume_value == "Below Avg":
-                        insight_text += ", though volume suggests limited participation"
-                    else:
-                        insight_text += ", with typical volume levels"
-                    
-                    # Golden Cross mention
-                    if ma_50 and ma_200 and ma_50 > ma_200:
-                        insight_text += ". **Golden Cross detected** (MA50 > MA200), a powerful bullish signal"
-                    
-                    if score >= 70:
-                        insight_text += ". Based on comprehensive technical analysis, the investment outlook is **strongly favorable**."
-                    elif score >= 60:
-                        insight_text += ". The overall investment outlook is **positive**, suggesting good entry opportunity."
-                    elif score >= 45:
-                        insight_text += ". The investment outlook is **mixed**, suggesting caution and further research."
-                    else:
-                        insight_text += ". Current indicators suggest a **challenging** investment environment."
-                    
-                    st.markdown(f'<div class="insight-text">{insight_text}</div>', unsafe_allow_html=True)
-                    
-                    # Show model metrics if available
-                    if ml_success and 'model_metrics' in analysis:
-                        metrics = analysis['model_metrics']
-                        st.markdown(f"""
-                        <div style='margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 8px; font-size: 11px;'>
-                            <b>Model Performance:</b><br>
-                            <div style='display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;'>
-                                <span>🌲 RF MAE: ${metrics.get('RandomForest_MAE', 0):.2f}</span>
-                                <span>📈 GB MAE: ${metrics.get('GradientBoosting_MAE', 0):.2f}</span>
-                                <span>🚀 XGB MAE: ${metrics.get('XGBoost_MAE', 0):.2f}</span>
-                            </div>
-                            <div style='display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;'>
-                                <span>🌲 RF R²: {metrics.get('RandomForest_R2', 0):.3f}</span>
-                                <span>📈 GB R²: {metrics.get('GradientBoosting_R2', 0):.3f}</span>
-                                <span>🚀 XGB R²: {metrics.get('XGBoost_R2', 0):.3f}</span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Key Takeaways Summary
-                    st.markdown('<div class="section-title">🎯 Key Takeaways</div>', unsafe_allow_html=True)
-                    
-                    reasons = analysis.get('reasons', [])
-                    if reasons:
-                        takeaway_col1, takeaway_col2 = st.columns(2)
-                        with takeaway_col1:
-                            st.markdown("""
-                            <div style='background: #f0fdf4; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;'>
-                                <h4 style='color: #065f46; margin-bottom: 10px;'>✅ Positive Signals</h4>
-                            """, unsafe_allow_html=True)
-                            for reason in reasons[:3]:
-                                st.markdown(f"• {reason}")
+                        showgrid=True,
+                        gridcolor='#f3f4f6'
+                    ),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Model Insight
+                st.markdown('<div class="insight-box">', unsafe_allow_html=True)
+                st.markdown('<div class="insight-title">🧠 Advanced ML Model Insight</div>', unsafe_allow_html=True)            # Model performance indicator
+            ml_success = analysis.get('ml_success', False)
+            model_confidence = analysis.get('model_confidence', 0.5)
+            
+            if ml_success:
+                model_info = f"Using ensemble ML (RandomForest + GradientBoosting + AutoReg) with {model_confidence*100:.0f}% confidence. "
+            else:
+                model_info = "Using AutoReg time-series model. "
+            
+            insight_text = model_info + f"The stock is trading with a {trend_value.lower()} trend"
+            
+            if momentum_value == "Positive":
+                insight_text += ", showing positive momentum indicators"
+            elif momentum_value == "Negative":
+                insight_text += ", with weakening momentum"
+            else:
+                insight_text += ", with neutral momentum"
+            
+            # RSI insight
+            if rsi_14:
+                if rsi_14 < 30:
+                    insight_text += f". RSI is oversold at {rsi_14:.0f}, suggesting potential bounce opportunity"
+                elif rsi_14 > 70:
+                    insight_text += f". RSI is overbought at {rsi_14:.0f}, indicating potential overextension"
+                else:
+                    insight_text += f". RSI is in healthy range at {rsi_14:.0f}"
+            
+            # MACD insight
+            if macd_diff:
+                if macd_diff > 0:
+                    insight_text += " with bullish MACD momentum"
+                else:
+                    insight_text += " while MACD shows bearish momentum"
+            
+            insight_text += f". Volatility is {volatility_value.lower()}"
+            
+            if volume_value in ["Strong", "Above Avg"]:
+                insight_text += ", while volume confirms strong investor interest"
+            elif volume_value == "Below Avg":
+                insight_text += ", though volume suggests limited participation"
+            else:
+                insight_text += ", with typical volume levels"
+            
+            # Golden Cross mention
+            if ma_50 and ma_200 and ma_50 > ma_200:
+                insight_text += ". **Golden Cross detected** (MA50 > MA200), a powerful bullish signal"
+            
+            if score >= 70:
+                insight_text += ". Based on comprehensive technical analysis, the investment outlook is **strongly favorable**."
+            elif score >= 60:
+                insight_text += ". The overall investment outlook is **positive**, suggesting good entry opportunity."
+            elif score >= 45:
+                insight_text += ". The investment outlook is **mixed**, suggesting caution and further research."
+            else:
+                insight_text += ". Current indicators suggest a **challenging** investment environment."
+            
+            st.markdown(f'<div class="insight-text">{insight_text}</div>', unsafe_allow_html=True)
+            
+            # Show model metrics if available
+            if ml_success and 'model_metrics' in analysis:
+                metrics = analysis['model_metrics']
+                st.markdown(f"""
+                <div style='margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 8px; font-size: 11px;'>
+                    <b>Model Performance:</b><br>
+                    <div style='display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;'>
+                        <span>🌲 RF MAE: ${metrics.get('RandomForest_MAE', 0):.2f}</span>
+                        <span>📈 GB MAE: ${metrics.get('GradientBoosting_MAE', 0):.2f}</span>
+                        <span>🚀 XGB MAE: ${metrics.get('XGBoost_MAE', 0):.2f}</span>
+                    </div>
+                    <div style='display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;'>
+                        <span>🌲 RF R²: {metrics.get('RandomForest_R2', 0):.3f}</span>
+                        <span>📈 GB R²: {metrics.get('GradientBoosting_R2', 0):.3f}</span>
+                        <span>🚀 XGB R²: {metrics.get('XGBoost_R2', 0):.3f}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Key Takeaways Summary
+            st.markdown('<div class="section-title">🎯 Key Takeaways</div>', unsafe_allow_html=True)
+            
+            reasons = analysis.get('reasons', [])
+            if reasons:
+                takeaway_col1, takeaway_col2 = st.columns(2)
+                with takeaway_col1:
+                    st.markdown("""
+                    <div style='background: #f0fdf4; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;'>
+                        <h4 style='color: #065f46; margin-bottom: 10px;'>✅ Positive Signals</h4>
+                    """, unsafe_allow_html=True)
+                    for reason in reasons[:3]:
+                        st.markdown(f"• {reason}")
                             st.markdown("</div>", unsafe_allow_html=True)
                         
                         with takeaway_col2:
                             st.markdown("""
                             <div style='background: #fef3c7; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;'>
-                                <h4 style='color: #92400e; margin-bottom: 10px;'>⚠️ Considerations</h4>
-                                <p style='color: #78350f; margin: 5px 0;'>• Past performance doesn't guarantee future results</p>
-                                <p style='color: #78350f; margin: 5px 0;'>• Market conditions can change rapidly</p>
-                                <p style='color: #78350f; margin: 5px 0;'>• Consider your risk tolerance and goals</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
+                            <h4 style='color: #92400e; margin-bottom: 10px;'>⚠️ Considerations</h4>
+                            <p style='color: #78350f; margin: 5px 0;'>• Past performance doesn't guarantee future results</p>
+                            <p style='color: #78350f; margin: 5px 0;'>• Market conditions can change rapidly</p>
+                            <p style='color: #78350f; margin: 5px 0;'>• Consider your risk tolerance and goals</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
             except Exception as e:
                 error_message = str(e)
-                st.error(f"❌ Error analyzing stock: {error_message}")
-                
-                # Provide helpful guidance based on error type
+                st.error(f"❌ Error analyzing stock: {error_message}")                # Provide helpful guidance based on error type
                 if "No data found" in error_message or "ticker" in error_message.lower():
                     st.warning("""
                     **📋 Stock Not Available**

@@ -26,26 +26,53 @@ git clone https://github.com/Hamdan772/Trendly.git
 cd Trendly
 ```
 
-2. **Create virtual environment**
+2. **Install dependencies**
+
+   **Option A: Using system Python (Quick & Easy)**
+   ```bash
+   python3 -m pip install -r Trendly/requirements.txt --break-system-packages
+   ```
+
+   **Option B: Using virtual environment (Recommended)**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r Trendly/requirements.txt
+   ```
+
+3. **Run the application**
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+cd Trendly
+python3 -m streamlit run streamlit_app/00_ℹ️_Info.py --server.port 8505
 ```
 
-3. **Install dependencies**
+   **Note:** The app is located in the `Trendly/` subfolder within the repository.
+
+4. **Open in browser**
+- Navigate to `http://localhost:8505`
+- Enter a stock ticker (e.g., AAPL, MSFT, GOOGL, NVDA)
+- Click "Analyze Stock" to see AI-powered predictions and insights!
+
+### Troubleshooting
+
+**Import Errors (Pylance warnings in VS Code)?**
+- These are just IDE warnings and don't affect functionality
+- The app runs perfectly fine with system packages
+- To fix: Reload VS Code window (Cmd+Shift+P → "Reload Window")
+
+**Port already in use?**
 ```bash
-pip install -r requirements.txt
+# Kill existing Streamlit processes
+pkill -9 streamlit
+# Then run again
+python3 -m streamlit run Trendly/streamlit_app/00_ℹ️_Info.py --server.port 8505
 ```
 
-4. **Run the application**
+**Module not found errors?**
 ```bash
-streamlit run streamlit_app/00_ℹ️_Info.py
+# Reinstall dependencies
+python3 -m pip install -r Trendly/requirements.txt --break-system-packages -q
 ```
-
-5. **Open in browser**
-- Navigate to `http://localhost:8501`
-- Enter a stock ticker (e.g., AAPL, MSFT, GOOGL)
-- Click "Analyze Stock" to see predictions!
 
 ---
 

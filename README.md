@@ -41,12 +41,13 @@ cd Trendly
    ```
 
 3. **Run the application**
-```bash
-cd Trendly
-python3 -m streamlit run streamlit_app/00_ℹ️_Info.py --server.port 8505
-```
 
-   **Note:** The app is located in the `Trendly/` subfolder within the repository.
+   From the repository root directory:
+   ```bash
+   python3 -m streamlit run Trendly/streamlit_app/00_ℹ️_Info.py --server.port 8505
+   ```
+
+   **Note:** Make sure you're in the `/Users/hamdannishad/Desktop/CODING/Trendly` directory (the repository root), not inside the `Trendly/` subfolder.
 
 4. **Open in browser**
 - Navigate to `http://localhost:8505`

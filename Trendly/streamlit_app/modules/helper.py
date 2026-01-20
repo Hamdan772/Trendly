@@ -34,9 +34,13 @@ warnings.filterwarnings('ignore')
 def fetch_sp_tickers():
     """Fetch the S&P tickers from the CSV file in the assets folder."""
     try:
-      
+        # Get the absolute path to the CSV file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = os.path.join(current_dir, "..", "..", "assets", "data", "sp500_tickers.csv")
+        csv_path = os.path.normpath(csv_path)
+        
         # Read the CSV file
-        df = pd.read_csv("../assets/data/sp500_tickers.csv")
+        df = pd.read_csv(csv_path)
         
         # Convert to a dictionary
         sp_tickers = df.set_index("Symbol")["Security"].to_dict()

@@ -269,6 +269,30 @@ def calculate_exit_timing(forecast, current_price, indicators):
         forecast_vals = forecast.values if hasattr(forecast, 'values') else np.array(forecast)
         forecast_dates = forecast.index if hasattr(forecast, 'index') else None
         
+        # Check for NaN or invalid values
+        if np.any(np.isnan(forecast_vals)) or np.any(np.isinf(forecast_vals)):
+            # Filter out NaN/inf values
+            valid_mask = ~(np.isnan(forecast_vals) | np.isinf(forecast_vals))
+            if not np.any(valid_mask):
+                return {
+                    'signal': 'HOLD',
+                    'date': None,
+                    'reason': 'Invalid forecast data',
+                    'confidence': 0.0
+                }
+            forecast_vals = forecast_vals[valid_mask]
+            if forecast_dates is not None:
+                forecast_dates = forecast_dates[valid_mask]
+        
+        # Check if we have enough data points
+        if len(forecast_vals) < 2:
+            return {
+                'signal': 'HOLD',
+                'date': None,
+                'reason': 'Insufficient forecast points',
+                'confidence': 0.0
+            }
+        
         # Find peak and trough in forecast
         peak_idx = np.argmax(forecast_vals)
         trough_idx = np.argmin(forecast_vals)
@@ -284,18 +308,19 @@ def calculate_exit_timing(forecast, current_price, indicators):
         # Scenario 1: Check if going DOWN then UP (dip and recovery)
         # If trough is in first half and peak is in second half
         if trough_idx < mid_point and peak_idx > mid_point:
-            decline_pct = ((first_price - trough_price) / first_price) * 100
-            recovery_pct = ((last_price - trough_price) / trough_price) * 100
-            
-            if decline_pct > 2 and recovery_pct > 3:
-                # Temporary dip with strong recovery
-                confidence = min(60 + (recovery_pct * 2), 85.0)
-                return {
-                    'signal': 'HOLD',
-                    'date': peak_date,
-                    'reason': f'Temporary dip expected, then recovery to ${last_price:.2f} (+{recovery_pct:.1f}%) - HOLD through dip',
-                    'confidence': confidence
-                }
+            if first_price > 0 and trough_price > 0:
+                decline_pct = ((first_price - trough_price) / first_price) * 100
+                recovery_pct = ((last_price - trough_price) / trough_price) * 100
+                
+                if decline_pct > 2 and recovery_pct > 3:
+                    # Temporary dip with strong recovery
+                    confidence = min(60 + (recovery_pct * 2), 85.0)
+                    return {
+                        'signal': 'HOLD',
+                        'date': peak_date,
+                        'reason': f'Temporary dip expected, then recovery to ${last_price:.2f} (+{recovery_pct:.1f}%) - HOLD through dip',
+                        'confidence': confidence
+                    }
         
         # Scenario 2: Check if going DOWN consistently (bearish trend)
         # Count consecutive declines
@@ -304,14 +329,14 @@ def calculate_exit_timing(forecast, current_price, indicators):
             if forecast_vals[i] > forecast_vals[i + 1]:
                 decline_count += 1
         
-        decline_ratio = decline_count / (len(forecast_vals) - 1)
-        total_decline_pct = ((first_price - last_price) / first_price) * 100
+        decline_ratio = decline_count / (len(forecast_vals) - 1) if len(forecast_vals) > 1 else 0
+        total_decline_pct = ((first_price - last_price) / first_price) * 100 if first_price > 0 else 0
         
         # If declining more than 60% of the time and losing value
         if decline_ratio > 0.6 and total_decline_pct > 2.0:
             # Check technical indicators for confirmation
-            rsi = indicators.get('RSI_14', 50)
-            macd = indicators.get('MACD_Diff', 0)
+            rsi = indicators.get('RSI_14', 50) if indicators else 50
+            macd = indicators.get('MACD_Diff', 0) if indicators else 0
             
             confidence_factors = [40]  # Base confidence
             
@@ -335,7 +360,7 @@ def calculate_exit_timing(forecast, current_price, indicators):
         # Check for peak and decline pattern (going up then down)
         if peak_idx < len(forecast_vals) - 2:
             # Peak is not at the end - decline after peak
-            post_peak_decline = ((peak_price - last_price) / peak_price) * 100
+            post_peak_decline = ((peak_price - last_price) / peak_price) * 100 if peak_price > 0 else 0
             
             if post_peak_decline > 3.0:
                 # Significant decline after peak
@@ -361,8 +386,8 @@ def calculate_exit_timing(forecast, current_price, indicators):
             if forecast_vals[i] < forecast_vals[i + 1]:
                 upward_count += 1
         
-        upward_ratio = upward_count / (len(forecast_vals) - 1)
-        total_gain_pct = ((last_price - current_price) / current_price) * 100
+        upward_ratio = upward_count / (len(forecast_vals) - 1) if len(forecast_vals) > 1 else 0
+        total_gain_pct = ((last_price - current_price) / current_price) * 100 if current_price > 0 else 0
         
         if upward_ratio > 0.6 or total_gain_pct > 2.0:
             # Price rising steadily
@@ -383,10 +408,15 @@ def calculate_exit_timing(forecast, current_price, indicators):
         }
         
     except Exception as e:
+        # Log the error for debugging
+        print(f"Exit timing calculation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
         return {
             'signal': 'HOLD',
             'date': None,
-            'reason': f'Exit analysis unavailable',
+            'reason': f'Exit analysis unavailable: {str(e)[:50]}',
             'confidence': 0.0
         }
 

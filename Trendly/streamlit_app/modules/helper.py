@@ -236,7 +236,12 @@ def engineer_features(stock_data):
 
 def calculate_exit_timing(forecast, current_price, indicators):
     """
-    Analyze forecast to determine optimal exit point before downtrend.
+    Analyze forecast to determine optimal exit point based on price trajectory.
+    
+    Logic:
+    - If price going DOWN consistently -> PULL (Exit)
+    - If price going DOWN then UP -> HOLD (temporary dip, recovery expected)
+    - If price going UP -> HOLD (keep position)
     
     Args:
         forecast (pd.Series): Future price predictions
@@ -245,7 +250,7 @@ def calculate_exit_timing(forecast, current_price, indicators):
     
     Returns:
         dict: {
-            'signal': str ('HOLD' | 'WATCH' | 'EXIT'),
+            'signal': str ('HOLD' | 'WATCH' | 'PULL'),
             'date': datetime | None,
             'reason': str,
             'confidence': float (0-100)
@@ -264,120 +269,116 @@ def calculate_exit_timing(forecast, current_price, indicators):
         forecast_vals = forecast.values if hasattr(forecast, 'values') else np.array(forecast)
         forecast_dates = forecast.index if hasattr(forecast, 'index') else None
         
-        # Find peak in forecast
+        # Find peak and trough in forecast
         peak_idx = np.argmax(forecast_vals)
+        trough_idx = np.argmin(forecast_vals)
         peak_price = forecast_vals[peak_idx]
+        trough_price = forecast_vals[trough_idx]
         peak_date = forecast_dates[peak_idx] if forecast_dates is not None else None
         
-        # Check if we're already past peak
-        if peak_idx <= 1:
-            # Peak is at start or very soon
-            confidence_factors = []
+        # Calculate price changes
+        first_price = forecast_vals[0]
+        last_price = forecast_vals[-1]
+        mid_point = len(forecast_vals) // 2
+        
+        # Scenario 1: Check if going DOWN then UP (dip and recovery)
+        # If trough is in first half and peak is in second half
+        if trough_idx < mid_point and peak_idx > mid_point:
+            decline_pct = ((first_price - trough_price) / first_price) * 100
+            recovery_pct = ((last_price - trough_price) / trough_price) * 100
             
-            # Check technical indicators for bearish signals
+            if decline_pct > 2 and recovery_pct > 3:
+                # Temporary dip with strong recovery
+                confidence = min(60 + (recovery_pct * 2), 85.0)
+                return {
+                    'signal': 'HOLD',
+                    'date': peak_date,
+                    'reason': f'Temporary dip expected, then recovery to ${last_price:.2f} (+{recovery_pct:.1f}%) - HOLD through dip',
+                    'confidence': confidence
+                }
+        
+        # Scenario 2: Check if going DOWN consistently (bearish trend)
+        # Count consecutive declines
+        decline_count = 0
+        for i in range(len(forecast_vals) - 1):
+            if forecast_vals[i] > forecast_vals[i + 1]:
+                decline_count += 1
+        
+        decline_ratio = decline_count / (len(forecast_vals) - 1)
+        total_decline_pct = ((first_price - last_price) / first_price) * 100
+        
+        # If declining more than 60% of the time and losing value
+        if decline_ratio > 0.6 and total_decline_pct > 2.0:
+            # Check technical indicators for confirmation
             rsi = indicators.get('RSI_14', 50)
             macd = indicators.get('MACD_Diff', 0)
-            bb_position = indicators.get('BB_Position', 0.5)
             
-            # RSI overbought?
-            if rsi > 70:
-                confidence_factors.append(25)  # Strong signal
-            elif rsi > 60:
-                confidence_factors.append(15)  # Moderate signal
+            confidence_factors = [40]  # Base confidence
             
-            # MACD bearish?
-            if macd < 0:
+            # Add confirmation signals
+            if rsi > 70:  # Overbought
                 confidence_factors.append(20)
+            if macd < 0:  # Bearish MACD
+                confidence_factors.append(15)
+            if total_decline_pct > 5:  # Significant decline
+                confidence_factors.append(15)
             
-            # Bollinger Band position?
-            if bb_position > 0.8:
-                confidence_factors.append(25)  # Near upper band
+            confidence = min(sum(confidence_factors), 90.0)
             
-            # Calculate confidence
-            confidence = sum(confidence_factors)
+            return {
+                'signal': 'PULL',
+                'date': forecast_dates[0] if forecast_dates is not None else None,
+                'reason': f'Price declining to ${last_price:.2f} (-{total_decline_pct:.1f}%) - EXIT position',
+                'confidence': confidence
+            }
+        
+        # Check for peak and decline pattern (going up then down)
+        if peak_idx < len(forecast_vals) - 2:
+            # Peak is not at the end - decline after peak
+            post_peak_decline = ((peak_price - last_price) / peak_price) * 100
             
-            if confidence >= 50:
+            if post_peak_decline > 3.0:
+                # Significant decline after peak
+                confidence = min(50 + (post_peak_decline * 3), 85.0)
                 return {
-                    'signal': 'EXIT',
+                    'signal': 'PULL',
                     'date': peak_date,
-                    'reason': f'Peak detected - price may decline from ${peak_price:.2f}',
-                    'confidence': min(confidence, 95.0)
+                    'reason': f'Peak at ${peak_price:.2f}, then decline to ${last_price:.2f} - EXIT near peak',
+                    'confidence': confidence
                 }
-            elif confidence >= 30:
+            elif post_peak_decline > 1.5:
+                # Moderate decline - watch closely
                 return {
                     'signal': 'WATCH',
                     'date': peak_date,
                     'reason': f'Near potential peak at ${peak_price:.2f} - monitor closely',
-                    'confidence': confidence
+                    'confidence': 40.0 + (post_peak_decline * 5)
                 }
         
-        # Look for sustained decline after peak
-        if peak_idx < len(forecast_vals) - 2:
-            # Check for consecutive declines after peak
-            post_peak = forecast_vals[peak_idx + 1:]
-            decline_count = 0
-            for i in range(len(post_peak) - 1):
-                if post_peak[i] > post_peak[i + 1]:
-                    decline_count += 1
-                else:
-                    break
-            
-            # Calculate total decline from peak
-            if len(post_peak) > 0:
-                final_price = post_peak[-1]
-                decline_pct = ((peak_price - final_price) / peak_price) * 100
-                
-                # Significant decline detected?
-                if decline_count >= 2 and decline_pct > 2.0:
-                    # Recommend exit 1 day before peak
-                    exit_idx = max(0, peak_idx - 1)
-                    exit_date = forecast_dates[exit_idx] if forecast_dates is not None else None
-                    exit_price = forecast_vals[exit_idx]
-                    
-                    # Calculate confidence based on decline strength
-                    confidence = min(50 + (decline_pct * 5) + (decline_count * 10), 95.0)
-                    
-                    return {
-                        'signal': 'EXIT',
-                        'date': exit_date,
-                        'reason': f'Sell before peak at ${exit_price:.2f} (expected {decline_pct:.1f}% decline)',
-                        'confidence': confidence
-                    }
-                elif decline_count >= 1 and decline_pct > 1.0:
-                    # Moderate decline - watch signal
-                    confidence = 40 + (decline_pct * 3)
-                    return {
-                        'signal': 'WATCH',
-                        'date': peak_date,
-                        'reason': f'Potential peak at ${peak_price:.2f} - consider taking profits',
-                        'confidence': confidence
-                    }
+        # Scenario 3: Check if going UP consistently (bullish trend)
+        upward_count = 0
+        for i in range(len(forecast_vals) - 1):
+            if forecast_vals[i] < forecast_vals[i + 1]:
+                upward_count += 1
         
-        # Check if price is rising steadily (good time to hold)
-        if peak_idx >= len(forecast_vals) - 2:
-            # Peak is at or near end - price rising
-            gain_from_current = ((peak_price - current_price) / current_price) * 100
-            
-            if gain_from_current > 3.0:
-                return {
-                    'signal': 'HOLD',
-                    'date': None,
-                    'reason': f'Price rising to ${peak_price:.2f} (+{gain_from_current:.1f}%) - hold position',
-                    'confidence': 70.0
-                }
-            elif gain_from_current > 1.0:
-                return {
-                    'signal': 'HOLD',
-                    'date': None,
-                    'reason': f'Moderate uptrend to ${peak_price:.2f} (+{gain_from_current:.1f}%)',
-                    'confidence': 60.0
-                }
+        upward_ratio = upward_count / (len(forecast_vals) - 1)
+        total_gain_pct = ((last_price - current_price) / current_price) * 100
         
-        # Default: hold position
+        if upward_ratio > 0.6 or total_gain_pct > 2.0:
+            # Price rising steadily
+            confidence = min(60 + (total_gain_pct * 2), 85.0)
+            return {
+                'signal': 'HOLD',
+                'date': None,
+                'reason': f'Price rising to ${last_price:.2f} (+{total_gain_pct:.1f}%) - HOLD position',
+                'confidence': confidence
+            }
+        
+        # Default: Sideways movement or unclear pattern
         return {
             'signal': 'HOLD',
             'date': None,
-            'reason': 'No clear exit signal - maintain position',
+            'reason': 'Stable trend - maintain position',
             'confidence': 50.0
         }
         

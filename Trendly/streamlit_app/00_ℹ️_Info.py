@@ -553,19 +553,6 @@ with left_col:
         ]
         st.info("📊 Using top 8 major stocks")
     
-    # Quick Stock Suggestions
-    st.markdown("**💡 Popular Stocks**")
-    quick_picks = st.columns(4)
-    suggestions = ["AAPL", "MSFT", "NVDA", "TSLA"]
-    for i, (col, ticker) in enumerate(zip(quick_picks, suggestions)):
-        with col:
-            if st.button(ticker, key=f"quick_{ticker}", use_container_width=True):
-                # Find the full name for this ticker
-                matching = [opt for opt in ticker_options if f"({ticker})" in opt]
-                if matching:
-                    st.session_state['selected_stock'] = matching[0]
-                    st.rerun()
-    
     # Smart Investment Recommendation Button
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
@@ -949,10 +936,10 @@ with right_col:
                     exit_confidence = analysis.get('exit_confidence', 0.0)
                     
                     # Determine signal color and emoji
-                    if exit_signal == 'EXIT':
+                    if exit_signal == 'PULL':
                         signal_color = '#ef4444'  # Red
                         signal_emoji = '🔴'
-                        signal_label = 'SELL SIGNAL'
+                        signal_label = 'PULL OUT'
                     elif exit_signal == 'WATCH':
                         signal_color = '#f59e0b'  # Orange
                         signal_emoji = '🟡'
@@ -960,7 +947,7 @@ with right_col:
                     else:  # HOLD
                         signal_color = '#10b981'  # Green
                         signal_emoji = '🟢'
-                        signal_label = 'SAFE TO HOLD'
+                        signal_label = 'HOLD POSITION'
                     
                     # Build date display
                     date_display = f"📅 {exit_date.strftime('%b %d, %Y')}" if exit_date else ""
@@ -1076,7 +1063,7 @@ with right_col:
                 else:
                     model_info = "Using AutoReg time-series model. "
                 
-                    insight_text = model_info + f"The stock is trading with a {trend_value.lower()} trend"
+                insight_text = model_info + f"The stock is trading with a {trend_value.lower()} trend"
                 
                 if momentum_value == "Positive":
                     insight_text += ", showing positive momentum indicators"

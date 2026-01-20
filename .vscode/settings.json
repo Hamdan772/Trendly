@@ -1,0 +1,8 @@
+{
+    "python.analysis.extraPaths": [
+        "/Users/hamdannishad/Library/Python/3.9/lib/python/site-packages"
+    ],
+    "python.autoComplete.extraPaths": [
+        "/Users/hamdannishad/Library/Python/3.9/lib/python/site-packages"
+    ]
+}

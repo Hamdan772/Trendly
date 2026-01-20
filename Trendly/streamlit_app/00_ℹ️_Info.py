@@ -975,17 +975,17 @@ with right_col:
                                 <div style="font-size: 32px;">{signal_emoji}</div>
                                 <div>
                                     <div style="font-size: 24px; font-weight: bold; color: {signal_color};">{signal_label}</div>
-                                    <div style="font-size: 14px; color: rgba(255,255,255,0.6);">Confidence: {exit_confidence:.0f}%</div>
+                                    <div style="font-size: 14px; color: #000000;">Confidence: {exit_confidence:.0f}%</div>
                                 </div>
                             </div>"""
                     
                     if date_display:
                         exit_html += f"""
-                            <div style="font-size: 16px; color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">{date_display}</div>"""
+                            <div style="font-size: 16px; color: #000000; background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px;">{date_display}</div>"""
                     
                     exit_html += f"""
                         </div>
-                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); line-height: 1.6;">{exit_reason}</div>
+                        <div style="font-size: 16px; color: #000000; line-height: 1.6;">{exit_reason}</div>
                     </div>
                     """
                     

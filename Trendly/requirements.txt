@@ -3,6 +3,7 @@ plotly==5.17.0
 pandas==2.2.3
 requests==2.32.3
 defeatbeta-api>=0.0.29
+yfinance>=0.2.0
 statsmodels==0.14.0
 scikit-learn>=1.0.0
 ta>=0.10.0

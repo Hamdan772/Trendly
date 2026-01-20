@@ -747,6 +747,22 @@ with right_col:
                 if stock_data.empty:
                     st.error("❌ No data available for this stock")
                 else:
+                    # Check data freshness
+                    latest_date = stock_data.index[-1]
+                    today = datetime.now().date()
+                    latest_data_date = latest_date.date() if hasattr(latest_date, 'date') else latest_date
+                    days_old = (today - latest_data_date).days
+                    
+                    # Show warning if data is more than 1 day old (excluding weekends)
+                    if days_old > 0:
+                        # Check if it's just weekend gap
+                        if today.weekday() == 0 and days_old <= 3:  # Monday with weekend gap
+                            st.info(f"ℹ️ Latest data from {latest_data_date.strftime('%B %d, %Y')} (weekend gap - markets closed Sat/Sun)")
+                        elif days_old > 3:
+                            st.warning(f"⚠️ Data may be delayed. Latest available: {latest_data_date.strftime('%B %d, %Y')} ({days_old} days ago)")
+                        elif days_old > 0:
+                            st.info(f"ℹ️ Latest data from {latest_data_date.strftime('%B %d, %Y')} ({days_old} day{'s' if days_old > 1 else ''} ago)")
+                    
                     cutoff_date = datetime.now() - pd.Timedelta(days=days_back)
                     stock_data_filtered = stock_data[stock_data.index >= cutoff_date]
                     

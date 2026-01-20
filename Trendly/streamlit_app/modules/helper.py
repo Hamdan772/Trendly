@@ -70,6 +70,7 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
             ticker = Ticker(stock_ticker)
             
             # Fetch price data (automatically gets full historical data)
+            # Force fresh data by not using cache
             data = ticker.price()
             
             if data.empty:
@@ -98,6 +99,15 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
                 two_years_ago = datetime.now() - timedelta(days=730)
                 data = data[data.index >= two_years_ago]
             
+            # Check data freshness and warn if stale
+            if not data.empty:
+                latest_date = data.index[-1].date() if hasattr(data.index[-1], 'date') else data.index[-1]
+                today = datetime.now().date()
+                days_old = (today - latest_date).days
+                if days_old > 3:
+                    print(f"⚠️ defeatbeta-api data is {days_old} days old, trying yfinance for fresher data...")
+                    raise ValueError("Data too old, trying yfinance")
+            
             return data[['Open', 'High', 'Low', 'Close', 'Volume']]
         
         except Exception as e:
@@ -114,7 +124,8 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
     
     try:
         ticker = yf.Ticker(stock_ticker)
-        data = ticker.history(period=period, interval=interval)
+        # Add prepost=True to get pre/post market data, auto_adjust=True for adjusted prices
+        data = ticker.history(period=period, interval=interval, auto_adjust=True, prepost=False)
         
         if data.empty:
             raise ValueError(f"No data found for ticker {stock_ticker}.")

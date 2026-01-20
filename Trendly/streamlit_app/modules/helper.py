@@ -8,15 +8,22 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, r2_score
 
 # Try to import XGBoost, fallback gracefully if not available
+XGBOOST_AVAILABLE = False
 try:
     import xgboost as xgb
     XGBOOST_AVAILABLE = True
-except (ImportError, Exception) as e:
-    XGBOOST_AVAILABLE = False
-    print(f"XGBoost not available: {e}")
-    print("Continuing with RandomForest and GradientBoosting only")
+except Exception as e:
+    print(f"XGBoost not available: {str(e)}")
 
-from defeatbeta_api.data.ticker import Ticker
+# Try to import defeatbeta_api, fallback gracefully if not available
+DEFEAT_API_AVAILABLE = False
+Ticker = None
+try:
+    from defeatbeta_api.data.ticker import Ticker
+    DEFEAT_API_AVAILABLE = True
+except Exception as e:
+    print(f"defeatbeta-api not available, will use yfinance")
+
 import ta  # Technical Analysis library
 import os
 from datetime import datetime, timedelta
@@ -45,6 +52,8 @@ def fetch_sp_tickers():
 def fetch_stock_history(stock_ticker, period="max", interval="1d"):
     """
     Fetch historical stock data from Defeat Beta API with Volume included.
+    Falls back to yfinance if defeatbeta_api is not available.
+    
     Args:
         stock_ticker (str): The stock ticker symbol.
         period (str): The time period for the data ('max', '2y', etc.).
@@ -53,29 +62,47 @@ def fetch_stock_history(stock_ticker, period="max", interval="1d"):
         pd.DataFrame: A DataFrame containing stock data with columns ['Open', 'High', 'Low', 'Close', 'Volume'].
     """
     try:
-        # Initialize Defeat Beta Ticker
-        ticker = Ticker(stock_ticker)
-        
-        # Fetch price data (automatically gets full historical data)
-        data = ticker.price()
-        
-        if data.empty:
-            raise ValueError(f"No data found for ticker {stock_ticker}.")
-        
-        # Rename columns to match expected format
-        data = data.rename(columns={
-            'open': 'Open',
-            'high': 'High',
-            'low': 'Low',
-            'close': 'Close',
-            'volume': 'Volume',
-            'report_date': 'Date'
-        })
-        
-        # Set Date as index
-        if 'Date' in data.columns:
-            data['Date'] = pd.to_datetime(data['Date'])
-            data = data.set_index('Date')
+        if DEFEAT_API_AVAILABLE:
+            # Use Defeat Beta API
+            ticker = Ticker(stock_ticker)
+            data = ticker.price()
+            
+            if data.empty:
+                raise ValueError(f"No data found for ticker {stock_ticker}.")
+            
+            # Rename columns to match expected format
+            data = data.rename(columns={
+                'open': 'Open',
+                'high': 'High',
+                'low': 'Low',
+                'close': 'Close',
+                'volume': 'Volume',
+                'report_date': 'Date'
+            })
+            
+            # Set Date as index
+            if 'Date' in data.columns:
+                data['Date'] = pd.to_datetime(data['Date'])
+                data = data.set_index('Date')
+        else:
+            # Fallback to yfinance
+            try:
+                import yfinance as yf
+            except ImportError:
+                print("Installing yfinance...")
+                import subprocess
+                subprocess.check_call(['pip', 'install', 'yfinance', '--break-system-packages', '-q'])
+                import yfinance as yf
+            
+            ticker_obj = yf.Ticker(stock_ticker)
+            data = ticker_obj.history(period=period, interval=interval)
+            
+            if data.empty:
+                raise ValueError(f"No data found for ticker {stock_ticker}.")
+            
+            # Ensure columns are named correctly
+            data.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']
+            data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
         
         # Sort by date (ascending)
         data = data.sort_index()

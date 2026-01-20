@@ -1175,7 +1175,16 @@ with right_col:
                     """, unsafe_allow_html=True)
             
             except Exception as e:
+                import traceback
                 error_message = str(e)
+                # Print full traceback to terminal for debugging
+                print("=" * 80)
+                print(f"ERROR analyzing stock {ticker_symbol}:")
+                print(error_message)
+                print("-" * 80)
+                traceback.print_exc()
+                print("=" * 80)
+                
                 st.error(f"❌ Error analyzing stock: {error_message}")
                 # Provide helpful guidance based on error type
                 if "No data found" in error_message or "ticker" in error_message.lower():
